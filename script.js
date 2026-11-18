@@ -1,3 +1,4 @@
+
 // Google Apps Script Web App URL
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwxv_MnmJE2RL1uNoF3Iyr6mSE1Mf6r6GVAHBVPBdTMbzGJ6f-wWpqYmpITxCz3by3Ntw/exec";
 
@@ -44,6 +45,7 @@ pinInput.placeholder = "Security Guard PIN";
 pinInput.inputMode = "numeric";
 pinInput.maxLength = 10;
 pinInput.hidden = true;
+pinInput.style.display = "none";
 
 const submitButton = visitorForm.querySelector('button[type="submit"]');
 visitorForm.insertBefore(pinInput, submitButton);
@@ -122,13 +124,7 @@ capturePhoto.addEventListener("click", function () {
   context.translate(canvas.width, 0);
   context.scale(-1, 1);
 
-  context.drawImage(
-    camera,
-    0,
-    0,
-    canvas.width,
-    canvas.height
-  );
+  context.drawImage(camera, 0, 0, canvas.width, canvas.height);
 
   selfieImage = canvas.toDataURL("image/jpeg", 0.6);
   selfieCaptured = true;
@@ -193,7 +189,10 @@ function setMode(mode) {
       if (element) element.hidden = false;
     });
 
+    // Hide PIN in IN mode
     pinInput.hidden = true;
+    pinInput.style.display = "none";
+
     submitButton.textContent = "Submit Visitor Entry";
 
   } else {
@@ -207,7 +206,10 @@ function setMode(mode) {
       if (element) element.hidden = true;
     });
 
+    // Show PIN in OUT mode
     pinInput.hidden = false;
+    pinInput.style.display = "block";
+
     submitButton.textContent = "Submit Visitor Exit";
   }
 
