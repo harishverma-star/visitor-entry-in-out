@@ -1,0 +1,61 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Visitor Entry Form</title>
+  <link rel="stylesheet" href="style.css?v=2">
+</head>
+<body>
+
+  <div class="form-container">
+    <h2>Visitor Entry Form</h2>
+
+    <form id="visitorForm">
+      <input type="text" id="visitorName"
+        placeholder="Visitor Name *" required>
+
+      <input type="tel" id="mobileNumber"
+        placeholder="Mobile Number *"
+        pattern="[6-9][0-9]{9}" required>
+
+      <input type="text" id="companyName"
+        placeholder="Company Name">
+
+      <input type="text" id="personToMeet"
+        placeholder="Person to Meet">
+
+      <input type="text" id="purpose"
+        placeholder="Purpose of Visit">
+
+      <input type="text" id="vehicleNumber"
+        placeholder="Vehicle Number">
+
+      <h4>Visitor Selfie *</h4>
+
+      <video id="camera" autoplay playsinline></video>
+      <canvas id="photoCanvas" hidden></canvas>
+<img id="selfiePreview" hidden
+     style="width:100%; border-radius:8px; margin-bottom:15px;">
+      <button type="button" id="openCamera">
+        Open Front Camera
+      </button>
+
+      <button type="button" id="capturePhoto">
+        Capture Selfie
+      </button>
+<button type="button" id="retakePhoto" hidden>
+  Retake Selfie
+</button>
+      <p id="selfieStatus">Selfie not captured</p>
+
+      <button type="submit">
+        Submit Visitor Entry
+      </button>
+    </form>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
