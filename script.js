@@ -1,4 +1,7 @@
+// Google Apps Script Web App URL
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwxv_MnmJE2RL1uNoF3Iyr6mSE1Mf6r6GVAHBVPBdTMbzGJ6f-wWpqYmpITxCz3by3Ntw/exec";
 
+// Existing HTML elements
 const camera = document.getElementById("camera");
 const canvas = document.getElementById("photoCanvas");
 const preview = document.getElementById("selfiePreview");
@@ -8,19 +11,69 @@ const openCamera = document.getElementById("openCamera");
 const capturePhoto = document.getElementById("capturePhoto");
 const retakePhoto = document.getElementById("retakePhoto");
 const visitorForm = document.getElementById("visitorForm");
-const mobileNumber = document.getElementById("mobileNumber");
 
-// Allow only 10 digits
-mobileNumber.addEventListener("input", function () {
-  this.value = this.value.replace(/\D/g, "").slice(0, 10);
-});
+const visitorName = document.getElementById("visitorName");
+const mobileNumber = document.getElementById("mobileNumber");
+const companyName = document.getElementById("companyName");
+const personToMeet = document.getElementById("personToMeet");
+const purpose = document.getElementById("purpose");
+const vehicleNumber = document.getElementById("vehicleNumber");
+
 let cameraStream = null;
 let selfieCaptured = false;
 let selfieImage = "";
+let currentMode = "IN";
+
+// Add IN / OUT selection
+const modePanel = document.createElement("div");
+modePanel.style.marginBottom = "15px";
+modePanel.innerHTML = `
+  <button type="button" id="inMode">Visitor IN</button>
+  <button type="button" id="outMode">Visitor OUT</button>
+`;
+visitorForm.parentNode.insertBefore(modePanel, visitorForm);
+
+const inMode = document.getElementById("inMode");
+const outMode = document.getElementById("outMode");
+
+// Add Security PIN field
+const pinInput = document.createElement("input");
+pinInput.type = "password";
+pinInput.id = "guardPin";
+pinInput.placeholder = "Security Guard PIN";
+pinInput.inputMode = "numeric";
+pinInput.maxLength = 10;
+pinInput.hidden = true;
+
+const submitButton = visitorForm.querySelector('button[type="submit"]');
+visitorForm.insertBefore(pinInput, submitButton);
+
+// Add message area
+const requestStatus = document.createElement("p");
+requestStatus.id = "requestStatus";
+requestStatus.style.marginTop = "12px";
+submitButton.insertAdjacentElement("afterend", requestStatus);
+
+// Mobile number: only 10 digits
+mobileNumber.addEventListener("input", function () {
+  this.value = this.value.replace(/\D/g, "").slice(0, 10);
+});
+
+// Stop camera
+function stopCamera() {
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(track => track.stop());
+    cameraStream = null;
+  }
+
+  camera.srcObject = null;
+}
 
 // Start front camera
 async function startCamera() {
   try {
+    stopCamera();
+
     cameraStream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: "user" },
       audio: false
@@ -41,17 +94,7 @@ async function startCamera() {
   }
 }
 
-// Stop camera
-function stopCamera() {
-  if (cameraStream) {
-    cameraStream.getTracks().forEach(track => track.stop());
-    cameraStream = null;
-  }
-
-  camera.srcObject = null;
-}
-
-// Open camera button
+// Open camera
 openCamera.addEventListener("click", startCamera);
 
 // Capture selfie
@@ -61,8 +104,18 @@ capturePhoto.addEventListener("click", function () {
     return;
   }
 
-  canvas.width = camera.videoWidth;
-  canvas.height = camera.videoHeight;
+  const originalWidth = camera.videoWidth;
+  const originalHeight = camera.videoHeight;
+
+  if (!originalWidth || !originalHeight) {
+    alert("Camera is not ready. Please try again.");
+    return;
+  }
+
+  const scale = Math.min(1, 640 / originalWidth);
+
+  canvas.width = Math.round(originalWidth * scale);
+  canvas.height = Math.round(originalHeight * scale);
 
   const context = canvas.getContext("2d");
 
@@ -77,7 +130,7 @@ capturePhoto.addEventListener("click", function () {
     canvas.height
   );
 
-  selfieImage = canvas.toDataURL("image/jpeg", 0.85);
+  selfieImage = canvas.toDataURL("image/jpeg", 0.6);
   selfieCaptured = true;
 
   preview.src = selfieImage;
@@ -92,7 +145,7 @@ capturePhoto.addEventListener("click", function () {
   stopCamera();
 });
 
-// Retake selfie button
+// Retake selfie
 retakePhoto.addEventListener("click", function () {
   selfieCaptured = false;
   selfieImage = "";
@@ -102,14 +155,145 @@ retakePhoto.addEventListener("click", function () {
   startCamera();
 });
 
-// Submit form (testing only)
-visitorForm.addEventListener("submit", function (event) {
+// Switch between IN and OUT
+function setMode(mode) {
+  currentMode = mode;
+  requestStatus.textContent = "";
+  pinInput.value = "";
+
+  stopCamera();
+
+  const entryFields = [
+    visitorName,
+    companyName,
+    personToMeet,
+    purpose,
+    vehicleNumber
+  ];
+
+  const selfieElements = [
+    visitorForm.querySelector("h4"),
+    camera,
+    canvas,
+    preview,
+    openCamera,
+    capturePhoto,
+    retakePhoto,
+    statusText
+  ];
+
+  if (mode === "IN") {
+    entryFields.forEach(field => {
+      field.hidden = false;
+    });
+
+    visitorName.required = true;
+
+    selfieElements.forEach(element => {
+      if (element) element.hidden = false;
+    });
+
+    pinInput.hidden = true;
+    submitButton.textContent = "Submit Visitor Entry";
+
+  } else {
+    entryFields.forEach(field => {
+      field.hidden = true;
+    });
+
+    visitorName.required = false;
+
+    selfieElements.forEach(element => {
+      if (element) element.hidden = true;
+    });
+
+    pinInput.hidden = false;
+    submitButton.textContent = "Submit Visitor Exit";
+  }
+
+  selfieCaptured = false;
+  selfieImage = "";
+  preview.src = "";
+}
+
+inMode.addEventListener("click", () => setMode("IN"));
+outMode.addEventListener("click", () => setMode("OUT"));
+
+// Submit IN or OUT
+visitorForm.addEventListener("submit", async function (event) {
   event.preventDefault();
 
-  if (!selfieCaptured) {
-    alert("Please capture visitor selfie first.");
+  const mobile = mobileNumber.value.trim();
+
+  if (!/^[6-9][0-9]{9}$/.test(mobile)) {
+    alert("Please enter a valid 10-digit mobile number.");
     return;
   }
 
-  alert("Selfie and visitor form test successful! Google Sheets connection will be added next.");
+  let data = {
+    action: currentMode,
+    mobile: mobile
+  };
+
+  if (currentMode === "IN") {
+    if (!selfieCaptured || !selfieImage) {
+      alert("Please capture visitor selfie first.");
+      return;
+    }
+
+    data.name = visitorName.value.trim();
+    data.company = companyName.value.trim();
+    data.person = personToMeet.value.trim();
+    data.purpose = purpose.value.trim();
+    data.vehicle = vehicleNumber.value.trim();
+    data.selfie = selfieImage;
+
+  } else {
+    const pin = pinInput.value.trim();
+
+    if (!pin) {
+      alert("Please enter Security Guard PIN.");
+      return;
+    }
+
+    data.pin = pin;
+  }
+
+  submitButton.disabled = true;
+  requestStatus.textContent = "Sending request...";
+
+  try {
+    await fetch(SCRIPT_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: {
+        "Content-Type": "text/plain;charset=utf-8"
+      },
+      body: JSON.stringify(data)
+    });
+
+    requestStatus.textContent =
+      "Request sent. Please verify the record in Google Sheet.";
+
+    if (currentMode === "IN") {
+      visitorForm.reset();
+      selfieCaptured = false;
+      selfieImage = "";
+      preview.src = "";
+      preview.hidden = true;
+      camera.hidden = false;
+      statusText.textContent = "Selfie not captured";
+    } else {
+      pinInput.value = "";
+    }
+
+  } catch (error) {
+    requestStatus.textContent =
+      "Request could not be sent. Please check your internet connection.";
+  }
+
+  submitButton.disabled = false;
 });
+
+// Start in IN mode
+setMode("IN");
